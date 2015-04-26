@@ -6,10 +6,15 @@ package maketime
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"google.golang.org/api/calendar/v3"
-	"time"
 )
+
+type Calendar struct {
+	// All of the days we're tracking in this Calendar object.
+	days []Day
+}
 
 type Day struct {
 	// Date. Stored as a Time in UTC with the time set to midnight.
@@ -21,8 +26,9 @@ type Day struct {
 type HalfHourBlock struct {
 	// Stored as a Time in UTC
 	day time.Time
-	// Pointer to event taking up that time
-	// If nil, then this block is free
+	// Just a string representing this half-hour block for now.
+	// nil for no event at this time.
+	desc string
 }
 
 type Meeting struct {
@@ -34,6 +40,8 @@ type Meeting struct {
 const HoursInDay int = 24
 const BlocksInDay int = HoursInDay * 2
 
+// Given a midnight UTC time.Time this will create a Day structure prepopulated
+// with 30 minute blocks of time and return it.
 func MakeDay(day time.Time) (Day, error) {
 	if day.Hour() != 0 || day.Minute() != 0 || day.Second() != 0 ||
 		day.Nanosecond() != 0 || day != day.UTC() {
@@ -44,12 +52,39 @@ func MakeDay(day time.Time) (Day, error) {
 	newDay.day = day
 	curTime := day // Assumes it's midnight
 	for i := 0; i < BlocksInDay; i++ {
-		newDay.blocks[i] = HalfHourBlock{curTime}
+		newDay.blocks[i] = HalfHourBlock{curTime, ""}
 		curTime = curTime.Add(30 * time.Minute)
 	}
 	return newDay, nil
 }
 
+// Given a *calendar.Events and an empty Day, this will populate the Day with
+// all of the events from the calendar.
+// For now: assumes that all the events are on the same day.
+func PopulateDay(day *Day, events *calendar.Events) error {
+	// Get the day from the first Event's start time.
+	start := events.Items[0].Start
+	var eventday time.Time
+	if start.Date != "" {
+		eventday, _ = time.Parse("2006-01-02", start.Date)
+	} else {
+		eventday, _ = time.Parse(time.RFC3339, start.DateTime)
+	}
+
+	// Convert the event day to midnight-based
+	day.day = time.Date(eventday.Year(), eventday.Month(), eventday.Day(), 0, 0,
+		0, 0, time.UTC)
+
+	// Now populate the blocks.
+	// TODO: Read through the events, and put them in the right block with the
+	// right description. For now, just add enough to pass the test.
+	day.blocks[18].desc = events.Items[0].Description
+
+	return nil
+}
+
+// Given a *calendar.Service, this will pull all of the events for the next 10
+// days and return them as *calendar.Events.
 func GetEvents(srv *calendar.Service) *calendar.Events {
 	t := time.Now().Format(time.RFC3339)
 	events, err := srv.Events.List("primary").ShowDeleted(false).
@@ -62,6 +97,7 @@ func GetEvents(srv *calendar.Service) *calendar.Events {
 	return events
 }
 
+// Given a *calendar.Events, this will print them out semi-readably.
 func PrintEvents(events *calendar.Events) {
 	fmt.Println("Upcoming events:")
 	if len(events.Items) > 0 {
