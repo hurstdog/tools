@@ -29,20 +29,19 @@ type UserStat struct {
 // Map from UserName -> UserStat
 type StatMap map[string]*UserStat
 
-var userStats StatMap
+var userStats StatMap = make(StatMap)
 
-// Read a minecraft log and return the statistics from it.
-func ReadLog(log string) (StatMap, error) {
-	userStats := make(map[string]*UserStat)
+// Read a minecraft log collects the statistics from it.
+func ReadLog(log string) error {
 	fh, err := os.Open(log)
 	if err != nil {
-		return userStats, fmt.Errorf("Error opening %s: %q", log, err)
+		return fmt.Errorf("Error opening %s: %q", log, err)
 	}
 	scanner := bufio.NewScanner(fh)
 	for scanner.Scan() {
 		action, err := parseLine(scanner.Text())
 		if err != nil {
-			return userStats, err
+			return err
 		}
 		if action.UserName == "" {
 			continue
@@ -52,7 +51,6 @@ func ReadLog(log string) (StatMap, error) {
 			stats = &UserStat{}
 			stats.UserName = action.UserName
 			userStats[action.UserName] = stats
-			fmt.Printf("Added %q to the map\n", *stats)
 		}
 		if action.UUID != "" && stats.UUID == "" {
 			stats.UUID = action.UUID
@@ -60,7 +58,6 @@ func ReadLog(log string) (StatMap, error) {
 		// If this is a join message, count the last login
 		if action.Join {
 			stats.LastLogin = action.Time
-			fmt.Println("Set last login to: ", stats.LastLogin)
 		}
 		// If this is a part message, do the accounting
 		if action.Part && !stats.LastLogin.IsZero() {
@@ -69,13 +66,12 @@ func ReadLog(log string) (StatMap, error) {
 			stats.LastLogin = zero
 			stats.LoginCount++
 		}
-		fmt.Println("Current stats: ", stats)
 	}
 	if err := scanner.Err(); err != nil {
-		return userStats, fmt.Errorf("Error reading file %s: %q", log, err)
+		return fmt.Errorf("Error reading file %s: %q", log, err)
 	}
 
-	return userStats, nil
+	return nil
 }
 
 /*

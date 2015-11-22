@@ -51,11 +51,11 @@ func TestparseLineJoin(t *testing.T) {
 }
 
 func TestReadLog(t *testing.T) {
-	res, err := ReadLog(testLogFile)
+	err := ReadLog(testLogFile)
 	if err != nil {
 		t.Error(err)
 	}
-	for k, v := range res {
+	for k, v := range userStats {
 		fmt.Printf("Username: %s\n", k)
 		fmt.Printf("Login Count: %d\n", v.LoginCount)
 		fmt.Printf("Total Play Time: %d minutes\n", v.TotalPlayTime)
