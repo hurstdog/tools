@@ -31,6 +31,10 @@ type StatMap map[string]*UserStat
 
 var userStats StatMap = make(StatMap)
 
+func GetAllStats() StatMap {
+	return userStats
+}
+
 // Read a minecraft log collects the statistics from it.
 func ReadLog(log string) error {
 	fh, err := os.Open(log)

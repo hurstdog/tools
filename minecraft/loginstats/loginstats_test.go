@@ -2,7 +2,7 @@
 package loginstats
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -55,9 +55,32 @@ func TestReadLog(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	for k, v := range userStats {
-		fmt.Printf("Username: %s\n", k)
-		fmt.Printf("Login Count: %d\n", v.LoginCount)
-		fmt.Printf("Total Play Time: %d minutes\n", v.TotalPlayTime)
+	exStats := make(StatMap)
+	p1 := UserStat{
+		UserName:      "Player1",
+		UUID:          "1-1-1-1-1",
+		LoginCount:    3,
+		TotalPlayTime: 3,
+	}
+	exStats[p1.UserName] = &p1
+
+	p2 := UserStat{
+		UserName:      "Player2",
+		UUID:          "2-2-2-2-2",
+		LoginCount:    1,
+		TotalPlayTime: 99,
+	}
+	exStats[p2.UserName] = &p2
+
+	p3 := UserStat{
+		UserName:      "Player3",
+		UUID:          "3-3-3-3-3",
+		LoginCount:    2,
+		TotalPlayTime: 57,
+	}
+	exStats[p3.UserName] = &p3
+
+	if !reflect.DeepEqual(userStats, exStats) {
+		t.Errorf("Result: %q\nExpected: %q\n", userStats, exStats)
 	}
 }
