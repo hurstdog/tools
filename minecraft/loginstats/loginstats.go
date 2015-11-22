@@ -23,24 +23,59 @@ type UserStat struct {
 	UUID          string
 	LoginCount    int
 	TotalPlayTime int
+	LastLogin     time.Time
 }
 
-var userStats map[string]UserStat
+// Map from UserName -> UserStat
+type StatMap map[string]*UserStat
 
-func ReadLog(log string) error {
+var userStats StatMap
+
+// Read a minecraft log and return the statistics from it.
+func ReadLog(log string) (StatMap, error) {
+	userStats := make(map[string]*UserStat)
 	fh, err := os.Open(log)
 	if err != nil {
-		return fmt.Errorf("Error opening %s: %q", log, err)
+		return userStats, fmt.Errorf("Error opening %s: %q", log, err)
 	}
 	scanner := bufio.NewScanner(fh)
 	for scanner.Scan() {
-		fmt.Println(scanner.Text())
+		action, err := parseLine(scanner.Text())
+		if err != nil {
+			return userStats, err
+		}
+		if action.UserName == "" {
+			continue
+		}
+		stats := userStats[action.UserName]
+		if stats == nil {
+			stats = &UserStat{}
+			stats.UserName = action.UserName
+			userStats[action.UserName] = stats
+			fmt.Printf("Added %q to the map\n", *stats)
+		}
+		if action.UUID != "" && stats.UUID == "" {
+			stats.UUID = action.UUID
+		}
+		// If this is a join message, count the last login
+		if action.Join {
+			stats.LastLogin = action.Time
+			fmt.Println("Set last login to: ", stats.LastLogin)
+		}
+		// If this is a part message, do the accounting
+		if action.Part && !stats.LastLogin.IsZero() {
+			stats.TotalPlayTime += int(action.Time.Sub(stats.LastLogin).Minutes())
+			var zero time.Time
+			stats.LastLogin = zero
+			stats.LoginCount++
+		}
+		fmt.Println("Current stats: ", stats)
 	}
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("Error reading file %s: %q", log, err)
+		return userStats, fmt.Errorf("Error reading file %s: %q", log, err)
 	}
 
-	return nil
+	return userStats, nil
 }
 
 /*
@@ -51,9 +86,10 @@ func ReadLog(log string) error {
  [01:41:10] [Server thread/INFO]: Notch joined the game
  [02:01:35] [Server thread/INFO]: Notch fell out of the world
 */
-// ParseLine parses a single line of a minecraft server log file returning a
+// parseLine parses a single line of a minecraft server log file returning a
 // UserAction.
-func ParseLine(line string) (UserAction, error) {
+// Every UserAction returned will have a UserName defined.
+func parseLine(line string) (UserAction, error) {
 	ret := UserAction{}
 	t, err := time.Parse("[03:04:05]", line[:10])
 	if err != nil {
@@ -62,11 +98,13 @@ func ParseLine(line string) (UserAction, error) {
 	ret.Time = t
 	parts := strings.Split(line, " ")
 	if parts[1] == "[Server" {
-		ret.UserName = parts[3]
-		if parts[4] == "left" {
-			ret.Part = true
-		} else if parts[4] == "joined" {
-			ret.Join = true
+		if parts[4] == "joined" || parts[4] == "left" {
+			ret.UserName = parts[3]
+			if parts[4] == "left" {
+				ret.Part = true
+			} else if parts[4] == "joined" {
+				ret.Join = true
+			}
 		}
 	} else {
 		// UUID line
