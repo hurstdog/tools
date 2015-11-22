@@ -5,7 +5,7 @@ package loginstats
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"io"
 	"strings"
 	"time"
 )
@@ -36,12 +36,8 @@ func GetAllStats() StatMap {
 }
 
 // Read a minecraft log collects the statistics from it.
-func ReadLog(log string) error {
-	fh, err := os.Open(log)
-	if err != nil {
-		return fmt.Errorf("Error opening %s: %q", log, err)
-	}
-	scanner := bufio.NewScanner(fh)
+func ReadLog(log io.Reader) error {
+	scanner := bufio.NewScanner(log)
 	for scanner.Scan() {
 		action, err := parseLine(scanner.Text())
 		if err != nil {

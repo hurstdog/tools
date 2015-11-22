@@ -2,6 +2,7 @@
 package loginstats
 
 import (
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -51,7 +52,11 @@ func TestparseLineJoin(t *testing.T) {
 }
 
 func TestReadLog(t *testing.T) {
-	err := ReadLog(testLogFile)
+	fh, err := os.Open(testLogFile)
+	if err != nil {
+		t.Errorf("Error opening %s: %q", testLogFile, err)
+	}
+	err = ReadLog(fh)
 	if err != nil {
 		t.Error(err)
 	}
