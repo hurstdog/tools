@@ -12,7 +12,7 @@ const lineJoin = "[01:41:10] [Server thread/INFO]: Notch joined the game"
 const lineLeft = "[01:28:14] [Server thread/INFO]: Notch left the game"
 const lineFell = "[02:01:35] [Server thread/INFO]: Notch fell out of the world"
 
-func xTestParseLine(t *testing.T) {
+func TestParseLineUUID(t *testing.T) {
 	exTime, _ := time.Parse("03:04:05", "01:41:10")
 	expected := UserAction{UserName: "Notch",
 		UUID: "11111111-1111-1111-1111-111111111111",

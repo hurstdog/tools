@@ -68,6 +68,10 @@ func ParseLine(line string) (UserAction, error) {
 		} else if parts[4] == "joined" {
 			ret.Join = true
 		}
+	} else {
+		// UUID line
+		ret.UserName = parts[7]
+		ret.UUID = parts[9]
 	}
 	return ret, nil
 }
