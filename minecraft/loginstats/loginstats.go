@@ -102,7 +102,7 @@ func parseLine(line string) (UserAction, error) {
 				ret.Join = true
 			}
 		}
-	} else {
+	} else if parts[4] == "UUID" {
 		// UUID line
 		ret.UserName = parts[7]
 		ret.UUID = parts[9]
